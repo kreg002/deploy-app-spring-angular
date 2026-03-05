@@ -1,36 +1,44 @@
-version: "3.3"
 services:
-  angular-app:
-    image: angular-app
+  mysql:
+    image: mysql:5.7
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'demo'
+      MYSQL_ROOT_PASSWORD: 'root'
     ports:
-      - "0.0.0.0:4200:80"      
+      - '3306:3306'
+    volumes:
+      - demo:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   spring-boot-app:
-    image: spring-app
+    build: ./springboot/app
+    container_name: spring-backend
     ports:
-      - "0.0.0.0:8081:8081"
+      - "8081:8081"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/demo
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
-      - spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=com.mysql.cj.jdbc.Driver
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_MVC_CORS_MAPPING=/**
-      - SPRING_MVC_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE
-      - SPRING_MVC_CORS_ALLOWED_HEADERS=*
+      - spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
-  mysql:
-    image: mysql:5.7
-    restart: always
-    environment:
-      MYSQL_DATABASE: 'demo'
-      MYSQL_ROOT_USERNAME: 'root'
-      MYSQL_ROOT_PASSWORD: 'root'
+  angular-app:
+    build: ./angular-app
+    container_name: angular-frontend
     ports:
-      - '0.0.0.0:3306:3306'
-    volumes:
-      - demo:/var/lib/mysql
+      - "4200:80"
+    depends_on:
+      - spring-boot-app
+
 volumes:
   demo:
